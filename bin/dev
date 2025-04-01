@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+function check_command() {
+  local cmd=$1
+  local install_msg=$2
+  local install_cmd=$3
+
+  if ! command -v "$cmd" &> /dev/null; then
+    if [ -n "$install_cmd" ]; then
+      echo "$install_msg"
+      eval "$install_cmd"
+    else
+      echo "$install_msg"
+      exit 1
+    fi
+  fi
+}
+
+check_command "foreman" "Installing foreman..." "gem install foreman"
+check_command "mkcert" "mkcert is not installed. Please refer to the README.md for installation instructions"
+
+# Check if SSL certificates exist
+if [ ! -f "docker/local-nginx/certs/gumroad_dev.crt" ] || [ ! -f "docker/local-nginx/certs/gumroad_dev.key" ]; then
+  echo "SSL certificates not found. Please generate them by running:"
+  echo "  bin/generate_ssl_certificates"
+  echo "See README.md for more information on SSL certificate setup."
+  exit 1
+fi
+
+export NODE_EXTRA_CA_CERTS="$(mkcert -CAROOT)/rootCA.pem"
+
+foreman start -f Procfile.dev "$@"
+
